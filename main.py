@@ -1,6 +1,44 @@
 import re
 import csv
+import os
+import logging
 
+def logger(path):
+    def __logger(old_function):
+        # Создаем уникальный логгер для каждой функции
+        logger = logging.getLogger(f"{old_function.__name__}_{path}")
+        logger.setLevel(logging.INFO)
+
+        # Создаем обработчик для записи логов в файл
+        handler = logging.FileHandler(path, encoding='utf-8')
+        handler.setLevel(logging.INFO)
+
+        # Настраиваем форматирование
+        formatter = logging.Formatter('%(asctime)s - %(message)s')
+        handler.setFormatter(formatter)
+
+        # Добавляем обработчик к логгеру
+        if not logger.handlers:
+            logger.addHandler(handler)
+
+        def new_function(*args, **kwargs):
+            # Логируем имя функции и аргументы
+            func_name = old_function.__name__
+            logger.info(f"Функция '{func_name}' вызвана с args: {args} и kwargs: {kwargs}")
+
+            # Вызываем оригинальную функцию и получаем результат
+            result = old_function(*args, **kwargs)
+
+            # Логируем результат
+            logger.info(f"Функция '{func_name}' вернула: {result}")
+
+            return result
+
+        return new_function
+
+    return __logger
+
+@logger('log.log')
 def process_contacts(contacts_list):
     phone_pattern = re.compile(
         r'(\+7|8)\s*\(*(\d{3})\)*\s*\-*(\d{3})\s*\-*(\d{2})\s*\-*(\d{2})')
@@ -29,7 +67,7 @@ def process_contacts(contacts_list):
 
     return [contacts_list[0]] + list(contacts_dict.values())
 
-
+@logger('log2.log')
 def save_to_csv(file_name, contacts):
     with open(file_name, "w", newline='', encoding='utf8') as f:
         writer = csv.writer(f)
